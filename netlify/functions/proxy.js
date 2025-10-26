@@ -42,6 +42,48 @@ function getProxyPrefix(host) {
   return null;
 }
 
+async function modifyResponse(response, host_prefix, effective_hostname) {
+  // 只处理文本内容
+  const content_type = response.headers.get('content-type') || '';
+  if (!content_type.includes('text/') && !content_type.includes('application/json') && 
+      !content_type.includes('application/javascript') && !content_type.includes('application/xml')) {
+    return response.body;
+  }
+
+  let text = await response.text();
+  
+  // 使用有效主机名获取域名后缀部分（用于构建完整的代理域名）
+  const domain_suffix = effective_hostname.substring(host_prefix.length);
+  
+  // 替换所有域名引用
+  for (const [original_domain, proxy_prefix] of Object.entries(domain_mappings)) {
+    const escaped_domain = original_domain.replace(/\./g, '\\.');
+    const full_proxy_domain = `${proxy_prefix}${domain_suffix}`;
+    
+    // 替换完整URLs
+    text = text.replace(
+      new RegExp(`https?://${escaped_domain}(?=/|"|'|\\s|$)`, 'g'),
+      `https://${full_proxy_domain}`
+    );
+    
+    // 替换协议相对URLs
+    text = text.replace(
+      new RegExp(`//${escaped_domain}(?=/|"|'|\\s|$)`, 'g'),
+      `//${full_proxy_domain}`
+    );
+  }
+
+  // 处理相对路径，使用有效主机名
+  if (host_prefix === 'gh.') {
+    text = text.replace(
+      /(?<=["'])\/(?!\/|[a-zA-Z]+:)/g,
+      `https://${effective_hostname}/`
+    );
+  }
+
+  return text;
+}
+
 // 修改响应内容
 async function modifyResponse(response, host_prefix, effective_hostname) {
   // 只处理文本内容
@@ -88,14 +130,33 @@ async function modifyResponse(response, host_prefix, effective_hostname) {
   return text;
 }
 
-// Netlify Function 主处理函数
-export async function handler(event, context) {
-  const req = {
-    url: event.path + (event.queryStringParameters ? '?' + new URLSearchParams(event.queryStringParameters).toString() : ''),
-    method: event.httpMethod,
+// Netlify Function handler
+exports.handler = async function(event, context) {
+  console.warn('[Debug] 收到请求:', {
+    path: event.path,
+    httpMethod: event.httpMethod,
     headers: event.headers,
-    body: event.body
-  };
+    queryStringParameters: event.queryStringParameters
+  });
+
+  const request = event;
+  const url = new URL(request.rawUrl || `https://${request.headers.host}${request.path}`);
+  const current_host = url.host;
+  
+  console.warn('[Debug] 解析的 URL:', {
+    raw: request.rawUrl,
+    parsed: url.toString(),
+    host: current_host
+  });
+  
+  // 检测Host头，优先使用Host头中的域名来决定后缀
+  const host_header = request.headers.host;
+  const effective_host = host_header || current_host;
+  
+  console.warn('[Debug] 主机名信息:', {
+    host_header,
+    effective_host
+  });
   
   // 创建模拟的响应对象
   const res = {
@@ -155,7 +216,10 @@ export async function handler(event, context) {
     // 从有效主机名中提取前缀
     console.warn('[Debug] 当前请求主机名:', effective_host);
     const host_prefix = getProxyPrefix(effective_host);
-    console.warn('[Debug] 提取的前缀:', host_prefix);
+    console.warn('[Debug] 提取的前缀:', {
+      effective_host,
+      host_prefix
+    });
     
     if (!host_prefix) {
       console.warn('[Debug] 未找到匹配的前缀配置');
@@ -173,20 +237,32 @@ export async function handler(event, context) {
       }
     }
     
-    if (target_host) {
-      console.warn('[Debug] 将反代到:', `https://${target_host}${url.pathname}`);
-    }
+    console.warn('[Debug] 目标主机解析:', {
+      host_prefix,
+      target_host,
+      domain_mappings: Object.entries(domain_mappings)
+        .filter(([original, prefix]) => prefix === host_prefix)
+    });
 
     if (!target_host) {
+      console.warn('[Debug] 未找到匹配的目标主机');
       return res.status(404).send('Domain not configured for proxy');
     }
 
     // 直接使用正则表达式处理最常见的嵌套URL问题
     let pathname = url.pathname;
+    console.warn('[Debug] 处理前的路径:', pathname);
     
     // 修复特定的嵌套URL模式 - 直接移除嵌套URL部分
-    pathname = pathname.replace(/(\/[^\/]+\/[^\/]+\/(?:latest-commit|tree-commit-info)\/[^\/]+)\/https%3A\/\/[^\/]+\/.*/, '$1');
-    pathname = pathname.replace(/(\/[^\/]+\/[^\/]+\/(?:latest-commit|tree-commit-info)\/[^\/]+)\/https:\/\/[^\/]+\/.*/, '$1');
+    const original_pathname = pathname;
+    pathname = pathname.replace(/(/[^/]+/[^/]+/(?:latest-commit|tree-commit-info)/[^/]+)/https%3A//[^/]+/.*/, '$1');
+    pathname = pathname.replace(/(/[^/]+/[^/]+/(?:latest-commit|tree-commit-info)/[^/]+)/https://[^/]+/.*/, '$1');
+
+    console.warn('[Debug] 路径处理:', {
+      original: original_pathname,
+      processed: pathname,
+      changed: original_pathname !== pathname
+    });
 
     // 构建新的请求URL
     const new_url = new URL(`https://${target_host}${pathname}${url.search}`);
@@ -228,15 +304,41 @@ export async function handler(event, context) {
     console.warn('[Debug] 发送请求到:', new_url.href);
     console.warn('[Debug] 请求头:', JSON.stringify(Object.fromEntries(new_headers.entries()), null, 2));
     
+    const fetchOptions = {
+      method: request.method,
+      headers: new_headers,
+      body: request.method !== 'GET' ? request.body : undefined
+    };
+
     try {
       const response = await fetch(new_url.href, fetchOptions);
       console.warn('[Debug] 响应状态:', response.status);
       console.warn('[Debug] 响应头:', JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
-    } catch (error) {
-      console.error('[Error] 请求失败:', error.message);
-      console.error('[Error] 错误堆栈:', error.stack);
-      throw error;
-    }
+
+      // 克隆响应以便处理内容
+      const response_clone = response.clone();
+      
+      // 设置新的响应头
+      const new_response_headers = new Headers(response.headers);
+      new_response_headers.set('access-control-allow-origin', '*');
+      new_response_headers.set('access-control-allow-credentials', 'true');
+      new_response_headers.set('cache-control', 'public, max-age=14400');
+      new_response_headers.delete('content-security-policy');
+      new_response_headers.delete('content-security-policy-report-only');
+      new_response_headers.delete('clear-site-data');
+
+      // 添加这些行来处理编码问题
+      new_response_headers.delete('content-encoding');
+      new_response_headers.delete('content-length');
+      
+      // 处理响应内容，替换域名引用，使用有效主机名来决定域名后缀
+      const modified_body = await modifyResponse(response_clone, host_prefix, effective_host);
+
+      return {
+        statusCode: response.status,
+        headers: Object.fromEntries(new_response_headers.entries()),
+        body: modified_body
+      };
 
     // 处理重定向
     if ([301, 302, 303, 307, 308].includes(response.status)) {
