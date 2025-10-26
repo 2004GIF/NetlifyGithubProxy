@@ -304,11 +304,15 @@ exports.handler = async function(event, context) {
     console.warn('[Debug] 发送请求到:', new_url.href);
     console.warn('[Debug] 请求头:', JSON.stringify(Object.fromEntries(new_headers.entries()), null, 2));
     
-    const fetchOptions = {
+    let fetchOptions = {
       method: request.method,
-      headers: new_headers,
-      body: request.method !== 'GET' ? request.body : undefined
+      headers: new_headers
     };
+
+    // 只有非 GET 请求才设置 body
+    if (request.method !== 'GET' && request.body) {
+      fetchOptions.body = request.body;
+    }
 
     try {
       const response = await fetch(new_url.href, fetchOptions);
