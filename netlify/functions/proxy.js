@@ -153,18 +153,28 @@ export async function handler(event, context) {
     }
 
     // 从有效主机名中提取前缀
+    console.log('当前请求主机名:', effective_host);
     const host_prefix = getProxyPrefix(effective_host);
+    console.log('提取的前缀:', host_prefix);
+    
     if (!host_prefix) {
+      console.log('未找到匹配的前缀配置');
       return res.status(404).send('Domain not configured for proxy');
     }
 
     // 根据前缀找到对应的原始域名
     let target_host = null;
     for (const [original, prefix] of Object.entries(domain_mappings)) {
+      console.log('检查映射:', original, '->', prefix);
       if (prefix === host_prefix) {
         target_host = original;
+        console.log('找到目标主机:', target_host);
         break;
       }
+    }
+    
+    if (target_host) {
+      console.log('将反代到:', `https://${target_host}${url.pathname}`);
     }
 
     if (!target_host) {
@@ -215,7 +225,17 @@ export async function handler(event, context) {
     }
 
     // 发起请求
-    const response = await fetch(new_url.href, fetchOptions);
+    console.log('发送请求到:', new_url.href);
+    console.log('请求头:', Object.fromEntries(new_headers.entries()));
+    
+    try {
+      const response = await fetch(new_url.href, fetchOptions);
+      console.log('响应状态:', response.status);
+      console.log('响应头:', Object.fromEntries(response.headers.entries()));
+    } catch (error) {
+      console.error('请求失败:', error);
+      throw error;
+    }
 
     // 处理重定向
     if ([301, 302, 303, 307, 308].includes(response.status)) {
