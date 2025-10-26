@@ -1,74 +1,22 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GitHub 代理测试</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            line-height: 1.6;
-        }
-        .test-section {
-            margin: 20px 0;
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        .test-button {
-            padding: 10px 20px;
-            background-color: #0366d6;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        .test-button:hover {
-            background-color: #0255b3;
-        }
-        #result {
-            margin-top: 20px;
-            padding: 10px;
-            border-radius: 4px;
-            white-space: pre-wrap;
-            font-family: monospace;
-        }
-        .success {
-            background-color: #dcffe4;
-            border: 1px solid #28a745;
-        }
-        .error {
-            background-color: #ffe6e6;
-            border: 1px solid #dc3545;
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Netlify Edge GitHub 反代 (nf-*)</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 40px; line-height: 1.6; }
+    code { background: #f3f3f3; padding: 2px 6px; border-radius: 4px; }
+  </style>
 </head>
 <body>
-    <h1>GitHub 代理测试页面</h1>
-    
-    <div class="test-section">
-        <h2>API 测试</h2>
-        <button class="test-button" onclick="testGitHubAPI()">测试 GitHub API</button>
-        <div id="result"></div>
-    </div>
-
-    <script>
-        async function testGitHubAPI() {
-            const resultDiv = document.getElementById('result');
-            try {
-                const response = await fetch('/.netlify/functions/proxy/repos/microsoft/vscode');
-                const data = await response.json();
-                
-                resultDiv.className = 'success';
-                resultDiv.textContent = JSON.stringify(data, null, 2);
-            } catch (error) {
-                resultDiv.className = 'error';
-                resultDiv.textContent = `错误：${error.message}`;
-            }
-        }
-    </script>
+  <h1>Netlify Edge GitHub 反代 (nf-*)</h1>
+  <p>本项目通过 Netlify Edge Function 将 <code>nf-*</code> 前缀子域名代理到 GitHub 等域名。</p>
+  <h2>使用示例</h2>
+  <ul>
+    <li><code>https://nf-gh.your-domain.com</code> → <code>https://github.com</code></li>
+    <li><code>https://nf-api-github-com.your-domain.com</code> → <code>https://api.github.com</code></li>
+  </ul>
+  <p>请在 Netlify 自定义域中添加对应子域，并指向此站点。</p>
 </body>
 </html>

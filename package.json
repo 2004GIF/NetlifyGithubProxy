@@ -1,16 +1,19 @@
 {
-  "name": "github-proxy",
-  "version": "1.0.0",
-  "description": "GitHub proxy service for Netlify",
-  "main": "netlify/functions/proxy.js",
+  "name": "nfgh-netlify-proxy",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "dev": "netlify dev",
-    "build": "netlify build"
-  },
-  "dependencies": {
-    "node-fetch": "^2.6.7"
+    "preview": "netlify deploy --dir=public",
+    "deploy": "netlify deploy --prod --dir=public",
+    "login": "netlify login",
+    "link": "netlify link"
   },
   "devDependencies": {
-    "netlify-cli": "^12.0.0"
+    "netlify-cli": "^17.0.0"
   }
 }

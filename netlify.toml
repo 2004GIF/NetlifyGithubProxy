@@ -1,16 +1,8 @@
 [build]
-  functions = "netlify/functions"
-  publish = "public"
+# 静态资源目录（用于 CLI 部署与占位首页）
+publish = "public"
 
-[functions]
-  node_bundler = "esbuild"
-  external_node_modules = ["node-fetch"]
-
-[[redirects]]
-  from = "/*"
-  to = "/.netlify/functions/proxy"
-  status = 200
-  force = true
-
-[functions.proxy]
-  maxDuration = 30
+# 绑定 Edge Function 路由
+[[edge_functions]]
+path = "/*"
+function = "proxy"
