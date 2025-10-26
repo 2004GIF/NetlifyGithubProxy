@@ -153,28 +153,28 @@ export async function handler(event, context) {
     }
 
     // 从有效主机名中提取前缀
-    console.log('当前请求主机名:', effective_host);
+    console.warn('[Debug] 当前请求主机名:', effective_host);
     const host_prefix = getProxyPrefix(effective_host);
-    console.log('提取的前缀:', host_prefix);
+    console.warn('[Debug] 提取的前缀:', host_prefix);
     
     if (!host_prefix) {
-      console.log('未找到匹配的前缀配置');
+      console.warn('[Debug] 未找到匹配的前缀配置');
       return res.status(404).send('Domain not configured for proxy');
     }
 
     // 根据前缀找到对应的原始域名
     let target_host = null;
     for (const [original, prefix] of Object.entries(domain_mappings)) {
-      console.log('检查映射:', original, '->', prefix);
+      console.warn('[Debug] 检查映射:', original, '->', prefix);
       if (prefix === host_prefix) {
         target_host = original;
-        console.log('找到目标主机:', target_host);
+        console.warn('[Debug] 找到目标主机:', target_host);
         break;
       }
     }
     
     if (target_host) {
-      console.log('将反代到:', `https://${target_host}${url.pathname}`);
+      console.warn('[Debug] 将反代到:', `https://${target_host}${url.pathname}`);
     }
 
     if (!target_host) {
@@ -225,15 +225,16 @@ export async function handler(event, context) {
     }
 
     // 发起请求
-    console.log('发送请求到:', new_url.href);
-    console.log('请求头:', Object.fromEntries(new_headers.entries()));
+    console.warn('[Debug] 发送请求到:', new_url.href);
+    console.warn('[Debug] 请求头:', JSON.stringify(Object.fromEntries(new_headers.entries()), null, 2));
     
     try {
       const response = await fetch(new_url.href, fetchOptions);
-      console.log('响应状态:', response.status);
-      console.log('响应头:', Object.fromEntries(response.headers.entries()));
+      console.warn('[Debug] 响应状态:', response.status);
+      console.warn('[Debug] 响应头:', JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
     } catch (error) {
-      console.error('请求失败:', error);
+      console.error('[Error] 请求失败:', error.message);
+      console.error('[Error] 错误堆栈:', error.stack);
       throw error;
     }
 
