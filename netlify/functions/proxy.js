@@ -255,8 +255,8 @@ exports.handler = async function(event, context) {
     
     // 修复特定的嵌套URL模式 - 直接移除嵌套URL部分
     const original_pathname = pathname;
-    pathname = pathname.replace(/(/[^/]+/[^/]+/(?:latest-commit|tree-commit-info)/[^/]+)/https%3A//[^/]+/.*/, '$1');
-    pathname = pathname.replace(/(/[^/]+/[^/]+/(?:latest-commit|tree-commit-info)/[^/]+)/https://[^/]+/.*/, '$1');
+    pathname = pathname.replace(/(\/[^\/]+\/[^\/]+\/(?:latest-commit|tree-commit-info)\/[^\/]+)\/https%3A\/\/[^\/]+\/.*/, '$1');
+     pathname = pathname.replace(/(\/[^\/]+\/[^\/]+\/(?:latest-commit|tree-commit-info)\/[^\/]+)\/https:\/\/[^\/]+\/.*/, '$1');
 
     console.warn('[Debug] 路径处理:', {
       original: original_pathname,
