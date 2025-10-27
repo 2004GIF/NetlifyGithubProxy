@@ -4,7 +4,7 @@ export const config = { path: "/*" };
 
 // 域名映射配置（代理前缀统一为 nf-xxx.）
 const domain_mappings = {
-  'github.com': 'nf-gh.',
+  'github.com': 'nf-yxt.',
   'avatars.githubusercontent.com': 'nf-avatars-githubusercontent-com.',
   'github.githubassets.com': 'nf-github-githubassets-com.',
   'collector.github.com': 'nf-collector-github-com.',
